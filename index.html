@@ -34,6 +34,11 @@
   /* Logs */
   .logs{border:1px solid var(--gd);background:var(--panel);padding:10px 14px;min-height:60px;max-height:420px;overflow-y:auto;}
   .logs .empty{color:#0a5a0a;}
+  .keypad{display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+  .keypad button{background:var(--panel);color:var(--g);border:1px solid var(--gd);font:inherit;font-size:1.3rem;padding:14px 0;text-shadow:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;}
+  .keypad button:active{background:var(--g);color:#000;text-shadow:none;}
+  .keypad button.fn{font-size:1rem;}
+  @media (pointer:coarse),(max-width:560px){.keypad{display:grid;}}
   .rule{font-size:.8rem;color:var(--gd);margin-bottom:8px;}
   .rule summary{cursor:pointer;}
   .rule summary:hover{color:var(--g);}
@@ -70,7 +75,8 @@
 
   <div class="title">// COMMAND PROMPT</div>
   <div class="prompt" id="prompt"><span id="prompt-text">root@system:~/decrypt&gt; </span><span id="typed"></span><span class="cursor"></span></div>
-  <div class="hint" id="hint">使用實體鍵盤輸入 5 位數字，按 Enter 送出（Backspace 刪除）</div>
+  <div class="hint" id="hint">輸入 5 位數字，按 Enter 送出（Backspace 刪除）；手機請使用下方數字鍵</div>
+  <div class="keypad" id="keypad"></div>
 
   <div class="title">// TRACE LOGS</div>
   <div class="legend">
@@ -253,6 +259,36 @@
     }, 1800);
   }
 
+  function pressDigit(d){
+    if (over) return;
+    if (buffer.length < LEN){ buffer += d; renderTyped(); }
+    else flashHint('已達 5 位數上限，請按 Enter 送出', true);
+  }
+  function pressBackspace(){
+    if (over) return;
+    buffer = buffer.slice(0, -1); renderTyped();
+  }
+  function pressEnter(){
+    if (over) return;
+    if (buffer.length === LEN) submit();
+    else flashHint('需輸入滿 5 位數字才能送出', true);
+  }
+
+  // 螢幕數字鍵盤（手機／觸控裝置）
+  var keypad = document.getElementById('keypad');
+  ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'].forEach(function(k){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = k;
+    if (k === 'DEL' || k === 'ENTER') b.className = 'fn';
+    b.addEventListener('click', function(){
+      if (k === 'DEL') pressBackspace();
+      else if (k === 'ENTER') pressEnter();
+      else pressDigit(k);
+    });
+    keypad.appendChild(b);
+  });
+
   document.addEventListener('keydown', function(e){
     var t = e.target;
     if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT')) return; // 筆記區輸入不受影響
@@ -262,15 +298,13 @@
     var k = e.key;
     if (k >= '0' && k <= '9' && k.length === 1){
       e.preventDefault();
-      if (buffer.length < LEN){ buffer += k; renderTyped(); }
-      else flashHint('已達 5 位數上限，請按 Enter 送出', true);
+      pressDigit(k);
     } else if (k === 'Backspace'){
       e.preventDefault();
-      buffer = buffer.slice(0, -1); renderTyped();
+      pressBackspace();
     } else if (k === 'Enter'){
       e.preventDefault();
-      if (buffer.length === LEN) submit();
-      else flashHint('需輸入滿 5 位數字才能送出', true);
+      pressEnter();
     } else if (k.length === 1 || k === ' '){
       e.preventDefault(); // 阻擋其他字元（字母、符號）
       flashHint('ERROR: 僅允許數字 0-9', true);
